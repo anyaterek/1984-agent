@@ -1,0 +1,10 @@
+{
+  "name": "1984-agent",
+  "description": "Team-standard review and testing of GitLab merge requests and GitHub pull requests in three depth modes: standard, hard, ultra.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Ruslan Rogatkin"
+  },
+  "license": "MIT",
+  "keywords": ["code-review", "merge-request", "pull-request", "gitlab", "github", "testing"]
+}
