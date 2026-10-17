@@ -21,11 +21,12 @@ Key journeys and domains (bounded contexts) raise it further. One `journey:` or
 `domain:` line (or one of each) → at least `hard`. Two or more `journey:`
 lines, or two or more `domain:` lines → propose `ultra` and name them (e.g.
 "`ultra` — the MR touches 2 key journeys: checkout, ordering"). The proposal is
-the deepest mode any signal asks for: size, risky paths, journeys, contexts.
-If the user chose a lower mode anyway, review in that mode and make the
-report's first line: "This MR touches <n> key journeys (<names>) — `ultra` is
-recommended." (or "<n> domains"); the risky-paths and logic lines, if
-any, follow it.
+the deepest mode any signal asks for: size, risky paths, journeys, domains.
+If the user chose a lower mode than journeys and domains ask for, review in
+that mode and make the report's first line one sentence naming all of them:
+"This MR touches key journeys (<names>) and domains (<names>) — `<mode>` is
+recommended." (leave out the part with nothing touched); the risky-paths and
+logic lines, if any, follow it.
 
 `hard` and `ultra` need subagents. If your agent cannot start subagents, say so
 and offer `standard`; do not imitate the roles one after another.

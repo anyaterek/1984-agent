@@ -66,7 +66,8 @@ repository root.
 
 7. **Mode.** No mode given → propose one per [modes.md](references/modes.md)
    and wait for the user's answer. Any `risky:` line raises the proposal to at
-   least `hard`; `journey:` and `domain:` lines can raise it to `ultra`.
+   least `hard`; one `journey:` or `domain:` line raises it to at least `hard`,
+   two or more of one kind to `ultra`.
 
 8. **Fork code.** If the MR comes from a fork, ask now,
    before any reviewer starts: show the exact install/build/test commands

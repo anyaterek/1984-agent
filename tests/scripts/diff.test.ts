@@ -289,6 +289,8 @@ describe('diff.sh journeys and domains', () => {
       ['--domain', ' = ', 'base'],
       ['base', '--journey', 'checkout=src/*'],
       ['base', '--domain', 'sales=src/*'],
+      ['--journey', 'check\tout=src/*', 'base'],
+      ['--domain', 'sales=src/\t*', 'base'],
     ]) {
       const r = run('diff.sh', args, { cwd: d });
       expect(r.code, args.join(' ')).toBe(2);

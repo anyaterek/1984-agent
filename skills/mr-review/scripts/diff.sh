@@ -53,13 +53,14 @@ usage() {
 
 trim() { printf '%s' "$1" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'; }
 
-# Journey and context specs, one "<kind><TAB><name><TAB><glob>" per line.
+# Journey and domain specs, one "<kind><TAB><name><TAB><glob>" per line.
 tab=$(printf '\t')
 area_specs=""
 add_area() {
   case "$2" in *=*) ;; *) echo "diff.sh: $1 needs <name>=<glob>" >&2; usage ;; esac
   name=$(trim "${2%%=*}") glob=$(trim "${2#*=}")
   [ -n "$name" ] && [ -n "$glob" ] || { echo "diff.sh: $1 needs a non-empty <name>=<glob>" >&2; usage; }
+  case "$name$glob" in *"$tab"*) echo "diff.sh: $1 must not contain a tab" >&2; usage ;; esac
   area_specs="$area_specs${1#--}$tab$name$tab$glob
 "
 }
@@ -213,8 +214,8 @@ while IFS="$(printf '\t')" read -r added deleted file; do
 done < "$out.numstat"
 cat "$risky"
 
-# Journeys, then contexts, each in argument order, with distinct matched files.
-{ printf '%s' "$area_specs" | sed 's/^/S\t/'; sed 's/^/M\t/' "$areas"; } | awk -F '\t' '
+# Journeys, then domains, each in argument order, with distinct matched files.
+{ printf '%s' "$area_specs" | sed "s/^/S$tab/"; sed "s/^/M$tab/" "$areas"; } | awk -F '\t' '
   $1 == "S" { key = $2 FS $3; if (!(key in known)) { known[key] = 1; order[++n] = key }; next }
   $1 == "M" { key = $2 FS $3; if (!((key FS $4) in seen)) { seen[key FS $4] = 1; count[key]++ } }
   END {

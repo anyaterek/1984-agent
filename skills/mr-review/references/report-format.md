@@ -113,7 +113,7 @@ Statuses are the ones from [checks.md](checks.md).
 Numbering is continuous across sections — the user picks findings to publish by these numbers.
 
 ```
-[This MR touches <n> key journeys (<names>) — `ultra` is recommended.]   ← in standard or hard with 2+ journeys or contexts
+[This MR touches key journeys (<names>) and domains (<names>) — `<mode>` is recommended.]   ← when the chosen mode is below what journeys and domains ask for
 [This MR touches risky paths (<reasons>) — `hard` is recommended.]   ← only in standard with risky paths
 [This MR changes logic — `hard` is recommended.]                     ← only in standard when logic changed
 MR-review: <!iid | #number | branch> «<title>» — mode <mode>

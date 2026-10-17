@@ -108,7 +108,8 @@ describe('mr-review key journeys and domains', () => {
     expect(modes).toMatch(/Two or more `journey:`\s+lines, or two or more `domain:` lines → propose `ultra`/);
     expect(modes).toMatch(/deepest mode any signal asks for/);
     expect(modes).toMatch(/`journey:`, `domain:` and `manifest:` lines/);
-    expect(read('references/report-format.md')).toMatch(/key journeys \(<names>\) — `ultra` is recommended/);
+    expect(read('references/report-format.md')).toMatch(/key journeys \(<names>\) and domains \(<names>\) — `<mode>` is recommended/);
+    expect(read('references/modes.md')).not.toMatch(/journeys, contexts/);
     expect(read('references/review-md-template.md')).toMatch(/## Journeys[\s\S]*## Domains/);
   });
 });
