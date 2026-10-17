@@ -89,3 +89,156 @@ describe('diff.sh', () => {
     expect(run('diff.sh', ['no-such-ref'], { cwd: dir }).code).toBe(1);
   });
 });
+
+/** Repo with `base` holding `baseFiles` and HEAD adding `changed` on top. */
+function repoWith(changed: Record<string, string>, baseFiles: Record<string, string> = {}): string {
+  const dir = tempDir();
+  git(dir, 'init', '-q', '-b', 'main');
+  write(dir, 'README.md', 'base\n');
+  for (const [file, content] of Object.entries(baseFiles)) write(dir, file, content);
+  git(dir, 'add', '.');
+  git(dir, 'commit', '-q', '-m', 'base');
+  git(dir, 'tag', 'base');
+  for (const [file, content] of Object.entries(changed)) write(dir, file, content);
+  git(dir, 'add', '.');
+  git(dir, 'commit', '-q', '-m', 'change');
+  return dir;
+}
+
+const lineIndexes = (stdout: string, name: string) =>
+  stdout.split('\n').flatMap((l, i) => (l.startsWith(`${name}: `) ? [i] : []));
+
+describe('diff.sh risky paths', () => {
+  it('marks ci and deploy paths', () => {
+    const d = repoWith({
+      '.gitlab-ci.yml': 'a\n',
+      'apps/api/.gitlab-ci.yml': 'a\n',
+      '.gitlab/ci/common.yml': 'a\n',
+      '.github/workflows/ci.yml': 'a\n',
+      'apps/api/Dockerfile': 'a\n',
+      'apps/web/Containerfile.prod': 'a\n',
+      'compose.override.yaml': 'a\n',
+      'apps/api/docker-compose.yml': 'a\n',
+      'scripts/deploy.sh': 'a\n',
+    });
+    expect(field(run('diff.sh', ['base'], { cwd: d }).stdout, 'risky').sort()).toEqual([
+      '.github/workflows/ci.yml (ci)',
+      '.gitlab-ci.yml (ci)',
+      '.gitlab/ci/common.yml (ci)',
+      'apps/api/.gitlab-ci.yml (ci)',
+      'apps/api/Dockerfile (deploy)',
+      'apps/api/docker-compose.yml (deploy)',
+      'apps/web/Containerfile.prod (deploy)',
+      'compose.override.yaml (deploy)',
+      'scripts/deploy.sh (deploy)',
+    ]);
+  });
+
+  it('marks migration, auth and review-rules paths', () => {
+    const d = repoWith({
+      'src/db/migrations/0001.sql': 'a\n',
+      'src/db/migration/x.ts': 'a\n',
+      'src/server/auth/login.ts': 'a\n',
+      'REVIEW.md': 'a\n',
+      'AGENTS.md': 'a\n',
+      'apps/api/AGENTS.md': 'a\n',
+      'CLAUDE.md': 'a\n',
+      'apps/web/CLAUDE.md': 'a\n',
+    });
+    expect(field(run('diff.sh', ['base'], { cwd: d }).stdout, 'risky').sort()).toEqual([
+      'AGENTS.md (review-rules)',
+      'CLAUDE.md (review-rules)',
+      'REVIEW.md (review-rules)',
+      'apps/api/AGENTS.md (review-rules)',
+      'apps/web/CLAUDE.md (review-rules)',
+      'src/db/migration/x.ts (migration)',
+      'src/db/migrations/0001.sql (migration)',
+      'src/server/auth/login.ts (auth)',
+    ]);
+  });
+
+  it('does not mark look-alike names', () => {
+    const d = repoWith({ 'src/author.ts': 'a\n', 'src/authorize.ts': 'a\n', 'src/a.js': 'a\n', 'docs/X_AGENTS.md': 'a\n' });
+    expect(field(run('diff.sh', ['base'], { cwd: d }).stdout, 'risky')).toEqual([]);
+  });
+
+  it('marks files matching repeated --risky globs with reason REVIEW.md', () => {
+    const d = repoWith({ 'src/payments/a.ts': 'a\n', 'src/billing/b.ts': 'a\n', 'src/gen/c.ts': 'a\n', 'src/other.ts': 'a\n' });
+    const r = run('diff.sh', ['--risky', 'src/payments/*', '--risky', 'src/billing/*', 'base', 'src/gen/*'], { cwd: d });
+    expect(r.code).toBe(0);
+    expect(field(r.stdout, 'risky').sort()).toEqual(['src/billing/b.ts (REVIEW.md)', 'src/payments/a.ts (REVIEW.md)']);
+    expect(field(r.stdout, 'skipped')).toEqual(['src/gen/c.ts (ignored by REVIEW.md)']);
+  });
+
+  it('marks risky files even when they are skipped, after every skipped line', () => {
+    const big = Array.from({ length: 1200 }, (_, i) => `step ${i}`).join('\n') + '\n';
+    const d = repoWith({ '.gitlab-ci.yml': big, 'src/auth/gen.ts': 'a\n', 'src/a.js': 'a\n' });
+    const out = run('diff.sh', ['base', 'src/auth/*'], { cwd: d }).stdout;
+    expect(field(out, 'skipped').sort()).toEqual(['.gitlab-ci.yml (too large: 1200 changed lines)', 'src/auth/gen.ts (ignored by REVIEW.md)']);
+    expect(field(out, 'risky').sort()).toEqual(['.gitlab-ci.yml (ci)', 'src/auth/gen.ts (auth)']);
+    expect(Math.min(...lineIndexes(out, 'risky'))).toBeGreaterThan(Math.max(...lineIndexes(out, 'skipped')));
+  });
+
+  it('rejects --risky without a value or after the base ref', () => {
+    const d = repoWith({ 'src/a.js': 'a\n' });
+    const missing = run('diff.sh', ['--risky'], { cwd: d });
+    expect(missing.code).toBe(2);
+    expect(missing.stderr).toMatch(/--risky/);
+    const late = run('diff.sh', ['base', '--risky', 'src/*'], { cwd: d });
+    expect(late.code).toBe(2);
+    expect(late.stderr).toMatch(/--risky/);
+  });
+
+  it('keeps the old output lines unchanged without --risky', () => {
+    const out = run('diff.sh', ['base', 'src/ignored/*'], { cwd: dir }).stdout;
+    expect(field(out, 'files')).toEqual(['2']);
+    expect(field(out, 'changed')).toEqual(['6']);
+    expect(field(out, 'risky')).toEqual([]);
+  });
+});
+
+describe('diff.sh manifests', () => {
+  it('names the nearest manifest and its ecosystem lockfile in a monorepo', () => {
+    const d = repoWith(
+      { 'apps/api/src/a.ts': 'a\n', 'apps/web/src/b.ts': 'b\n', 'apps/web/src/c.ts': 'c\n' },
+      { 'apps/api/package.json': '{}\n', 'apps/web/package.json': '{}\n', 'pnpm-lock.yaml': 'x\n' },
+    );
+    expect(field(run('diff.sh', ['base'], { cwd: d }).stdout, 'manifest').sort()).toEqual([
+      'apps/api/package.json (lockfile: pnpm-lock.yaml)',
+      'apps/web/package.json (lockfile: pnpm-lock.yaml)',
+    ]);
+  });
+
+  it('prefers a lockfile next to the manifest and takes the first by fixed order', () => {
+    const d = repoWith(
+      { 'apps/api/src/a.ts': 'a\n' },
+      { 'apps/api/package.json': '{}\n', 'apps/api/package-lock.json': 'x\n', 'apps/api/bun.lock': 'x\n', 'pnpm-lock.yaml': 'x\n' },
+    );
+    expect(field(run('diff.sh', ['base'], { cwd: d }).stdout, 'manifest')).toEqual([
+      'apps/api/package.json (lockfile: apps/api/bun.lock)',
+    ]);
+  });
+
+  it('ignores a lockfile of another ecosystem', () => {
+    const d = repoWith({ 'services/ml/a.py': 'a\n' }, { 'services/ml/pyproject.toml': 'x\n', 'pnpm-lock.yaml': 'x\n' });
+    expect(field(run('diff.sh', ['base'], { cwd: d }).stdout, 'manifest')).toEqual([
+      'services/ml/pyproject.toml (lockfile: none)',
+    ]);
+  });
+
+  it('is not fooled by a file named like an internal separator', () => {
+    const d = repoWith({ '--': 'x\n', 'src/a.ts': 'a\n' }, { 'package.json': '{}\n', 'bun.lock': 'x\n' });
+    expect(field(run('diff.sh', ['base'], { cwd: d }).stdout, 'manifest')).toEqual(['package.json (lockfile: bun.lock)']);
+  });
+
+  it('prints no manifest line without a manifest or for skipped files, and puts manifests after risky lines', () => {
+    expect(field(run('diff.sh', ['base'], { cwd: repoWith({ 'notes.md': 'a\n' }) }).stdout, 'manifest')).toEqual([]);
+    const d = repoWith(
+      { 'gen/x.ts': 'a\n', '.gitlab-ci.yml': 'a\n', 'src/a.ts': 'a\n' },
+      { 'gen/package.json': '{}\n', 'package.json': '{}\n' },
+    );
+    const out = run('diff.sh', ['base', 'gen/*'], { cwd: d }).stdout;
+    expect(field(out, 'manifest')).toEqual(['package.json (lockfile: none)']);
+    expect(Math.min(...lineIndexes(out, 'manifest'))).toBeGreaterThan(Math.max(...lineIndexes(out, 'risky')));
+  });
+});
