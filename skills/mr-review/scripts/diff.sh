@@ -60,7 +60,8 @@ add_area() {
   case "$2" in *=*) ;; *) echo "diff.sh: $1 needs <name>=<glob>" >&2; usage ;; esac
   name=$(trim "${2%%=*}") glob=$(trim "${2#*=}")
   [ -n "$name" ] && [ -n "$glob" ] || { echo "diff.sh: $1 needs a non-empty <name>=<glob>" >&2; usage; }
-  case "$name$glob" in *"$tab"*) echo "diff.sh: $1 must not contain a tab" >&2; usage ;; esac
+  case "$name$glob" in *"$tab"*|*"
+"*) echo "diff.sh: $1 must not contain a tab or a newline" >&2; usage ;; esac
   area_specs="$area_specs${1#--}$tab$name$tab$glob
 "
 }
