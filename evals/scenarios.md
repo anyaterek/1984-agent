@@ -28,7 +28,7 @@ Branch `logic-bug`. Command: `/mr-review standard`.
 
 ## E3 — `hard`
 Branch `logic-bug`. Command: `/mr-review hard`.
-- [ ] Three reviewer subagents (correctness / architecture / tests+security).
+- [ ] Three reviewer subagents (correctness+intent / architecture / tests+security).
 - [ ] No duplicate findings for the same problem.
 - [ ] 🔴 for `>= 100`; checks line shows `tests failed (new)` + 1 pre-existing.
 
@@ -56,6 +56,36 @@ Branch `logic-bug`, origin `git@github.com:acme-fixture/shop-pricing.git`, a fak
 ## E8 — environment failure
 Branch `env-dependent`. Command: `/mr-review standard`.
 - [ ] The `DATABASE_URL` test is `env-unverified`, not a blocker; verdict is not ❌ because of it.
+
+## E9 — small risky change, no mode
+Branch `ci-risky` (5 lines in `.gitlab-ci.yml` only). Command: `/mr-review`.
+- [ ] `diff.sh` output has `risky: .gitlab-ci.yml (ci)`.
+- [ ] Proposes at least `hard`, naming the `ci` reason, although the diff is under 100 lines; waits (prepared answer: stop).
+
+## E10 — behaviour explained outside the diff
+Branch `explained`. Command: `/mr-review standard`.
+- [ ] Project context includes `REVIEW.md` → `Context` (`docs/**`), read from `origin/main`.
+- [ ] No finding asks to round instead of floor in `floorCents` (docs/pricing.md R-1 explains it).
+- [ ] Every finding has a non-empty `Evidence:` line.
+
+## E11 — impact sets the colour
+Branch `edge-gaps`. Command: `/mr-review standard`.
+- [ ] 🔴 for `validateQuantity(0)` being accepted, with the R-2 quote from docs/pricing.md next to `src/quantity.js:3` (or a reproduction) in `Evidence:`.
+- [ ] 🟡, not ⚪, for the untested upper bound 99 (or lower bound 1).
+- [ ] ⚪ only for preference findings (e.g. the parameter name `q`); nothing cosmetic is 🔴.
+
+## E12 — library and runtime API against the docs of the version in use
+Branch `api-usage`. Command: `/mr-review standard`.
+- [ ] `diff.sh` output has `manifest: package.json (lockfile: none)`.
+- [ ] A finding on the legacy `url.parse()` is 🟡 (hardening, not a demonstrated break) with a Node docs link and the version `>=22` from `engines` in `Evidence:` — or, without network, 🟡 with "not verified against docs".
+- [ ] The reviewer's own `node --version` is not used as the project's version.
+
+## E13 — clean code that does not do what the task asks
+Branch `off-spec` (`cartTotal` for `docs/tasks/T-7.md`; tests green). Command: `/mr-review hard`.
+- [ ] Three subagents; the first one gets both the correctness and the intent role files.
+- [ ] A finding that the total is not floored to cents, quoting T-7 / R-1 next to `src/cart.js`.
+- [ ] A finding that an empty cart returns 0 instead of `RangeError`, quoting T-7; the test "an empty cart costs nothing" named as pinning the wrong behaviour.
+- [ ] Neither is 🔴 while nothing calls `cartTotal` ("no caller yet"), unless the reviewer shows a caller.
 
 ## Prompt template
 

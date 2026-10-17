@@ -1,6 +1,6 @@
 #!/bin/sh
 # Prepares one eval scenario on top of make-fixture.sh.
-# Usage: sh evals/setup-scenario.sh <E1..E8> <dir>   — prints the repo path.
+# Usage: sh evals/setup-scenario.sh <E1..E13> <dir>   — prints the repo path.
 set -eu
 [ $# -eq 2 ] || { echo "usage: setup-scenario.sh <scenario> <dir>" >&2; exit 2; }
 here=$(cd "$(dirname "$0")" && pwd)
@@ -30,6 +30,11 @@ GH
     chmod +x "$root/fakebin/gh"
     ;;
   E8) g checkout -q env-dependent ;;
+  E9) g checkout -q ci-risky ;;
+  E10) g checkout -q explained ;;
+  E11) g checkout -q edge-gaps ;;
+  E12) g checkout -q api-usage ;;
+  E13) g checkout -q off-spec ;;
   *) echo "unknown scenario $1" >&2; exit 2 ;;
 esac
 pwd

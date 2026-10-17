@@ -12,6 +12,17 @@
 #                  tests, a badly named variable
 #   huge           logic-bug + 5000-line package-lock.json + dist/bundle.js
 #   env-dependent  a test that needs PostgreSQL (DATABASE_URL)
+# Then main gets docs/pricing.md (rules R-1, R-2) and a REVIEW.md pointing at
+# docs/, and these branches start from that commit:
+#   ci-risky       a 5-line .gitlab-ci.yml, nothing else
+#   explained      floorCents() floors on purpose, as docs/pricing.md R-1 says
+#   edge-gaps      validateQuantity() accepts 0 although R-2 says 1..99, the
+#                  upper bound 99 is not tested, and a one-letter parameter
+#   api-usage      parseLink() uses the legacy url.parse(); engines node >=22
+# Then main gets docs/tasks/T-7.md (every scenario now sees it as project
+# context through REVIEW.md → Context: docs/**), and from there:
+#   off-spec       cartTotal() for T-7: clean code and green tests, but no R-1
+#                  flooring and an empty cart returns 0 instead of throwing
 set -eu
 
 [ $# -eq 1 ] || { echo "usage: make-fixture.sh <dir>" >&2; exit 2; }
@@ -141,10 +152,132 @@ JS
 commit "test: check database connectivity"
 
 g checkout -q main
+mkdir -p docs
+cat > docs/pricing.md <<'MD'
+# Pricing rules
+
+- R-1. Prices are floored to whole cents, never rounded up: `floorCents(1.239)` is `1.23`. Customers must never pay more than the shown price.
+- R-2. An order quantity is an integer from 1 to 99 inclusive.
+MD
+cat > REVIEW.md <<'MD'
+# Review rules
+
+## Context
+- `docs/**`
+MD
+commit "docs: pricing rules and review context"
+
+g checkout -q -b ci-risky main
+cat > .gitlab-ci.yml <<'YML'
+test:
+  image: node:22
+  script:
+    - npm test
+    - npm run build
+YML
+commit "ci: run tests and build"
+
+g checkout -q -b explained main
+cat > src/price.js <<'JS'
+// Floors to whole cents (docs/pricing.md R-1).
+export function floorCents(value) {
+  return Math.floor(value * 100) / 100;
+}
+JS
+cat > test/price.test.js <<'JS'
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import { floorCents } from '../src/price.js';
+
+test('floors to whole cents', () => assert.equal(floorCents(1.239), 1.23));
+JS
+commit "feat: floor prices to cents"
+
+g checkout -q -b edge-gaps main
+cat > src/quantity.js <<'JS'
+// Validates an order quantity.
+export function validateQuantity(q) {
+  if (!Number.isInteger(q) || q < 0 || q > 99) throw new RangeError('quantity must be within 1..99');
+  return q;
+}
+JS
+cat > test/quantity.test.js <<'JS'
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import { validateQuantity } from '../src/quantity.js';
+
+test('accepts 5', () => assert.equal(validateQuantity(5), 5));
+test('rejects 100', () => assert.throws(() => validateQuantity(100), RangeError));
+test('rejects 2.5', () => assert.throws(() => validateQuantity(2.5), RangeError));
+JS
+commit "feat: validate order quantity"
+
+g checkout -q -b api-usage main
+cat > package.json <<'JSON'
+{
+  "name": "shop-pricing",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "node build.js",
+    "test": "node --test"
+  }
+}
+JSON
+cat > src/link.js <<'JS'
+import url from 'node:url';
+
+// Returns the path of a product link.
+export function parseLink(input) {
+  return url.parse(input).pathname;
+}
+JS
+cat > test/link.test.js <<'JS'
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import { parseLink } from '../src/link.js';
+
+test('returns the path', () => assert.equal(parseLink('https://shop.example/p/42?ref=x'), '/p/42'));
+JS
+commit "feat: parse product links"
+
+g checkout -q main
+mkdir -p docs/tasks
+cat > docs/tasks/T-7.md <<'MD'
+# T-7. Cart total
+
+Add `cartTotal(items)` in `src/cart.js`.
+
+- Returns the sum of `price * qty` over all items, floored to whole cents (docs/pricing.md R-1).
+- Rejects an empty cart with `RangeError` — an order without items must not reach payment.
+MD
+commit "docs: task T-7 cart total"
+
+g checkout -q -b off-spec main
+cat > src/cart.js <<'JS'
+// Total of a cart (T-7).
+export function cartTotal(items) {
+  return items.reduce((sum, item) => sum + item.price * item.qty, 0);
+}
+JS
+cat > test/cart.test.js <<'JS'
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import { cartTotal } from '../src/cart.js';
+
+test('sums price times quantity', () => assert.equal(cartTotal([{ price: 2, qty: 3 }, { price: 5, qty: 1 }]), 11));
+test('an empty cart costs nothing', () => assert.equal(cartTotal([]), 0));
+JS
+commit "feat: cart total (T-7)"
+
+g checkout -q main
 cd "$root"
 git clone -q --bare seed origin.git
 git clone -q origin.git repo
 rm -rf seed
 cd repo
-for b in cosmetic logic-bug huge env-dependent; do git branch -q "$b" "origin/$b"; done
+for b in cosmetic logic-bug huge env-dependent ci-risky explained edge-gaps api-usage off-spec; do git branch -q "$b" "origin/$b"; done
 pwd
