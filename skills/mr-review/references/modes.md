@@ -17,6 +17,16 @@ risky paths: ci, migration"). If the user chose `standard` anyway, review in
 `standard` and make the report's first line:
 "This MR touches risky paths (<reasons>) — `hard` is recommended."
 
+Key journeys and domains (bounded contexts) raise it further. One `journey:` or
+`domain:` line (or one of each) → at least `hard`. Two or more `journey:`
+lines, or two or more `domain:` lines → propose `ultra` and name them (e.g.
+"`ultra` — the MR touches 2 key journeys: checkout, ordering"). The proposal is
+the deepest mode any signal asks for: size, risky paths, journeys, contexts.
+If the user chose a lower mode anyway, review in that mode and make the
+report's first line: "This MR touches <n> key journeys (<names>) — `ultra` is
+recommended." (or "<n> domains"); the risky-paths and logic lines, if
+any, follow it.
+
 `hard` and `ultra` need subagents. If your agent cannot start subagents, say so
 and offer `standard`; do not imitate the roles one after another.
 
@@ -28,7 +38,8 @@ Every reviewer subagent gets the same brief; only the role file differs:
 2. The finding contract from [report-format.md](report-format.md).
 3. MR title, description, source and target branch.
 4. The path of the filtered diff file from `diff.sh`, the list of skipped files,
-   the `risky:` and `manifest:` lines, and the worktree path — read whole files
+   the `risky:`, `journey:`, `domain:` and `manifest:` lines, and the
+   worktree path — read whole files
    there when the diff is not enough.
 4a. **Project context:** the paths collected in SKILL.md step 6. Read them with
    `git show <remote>/<target>:<path>`, never from the worktree. Use them in

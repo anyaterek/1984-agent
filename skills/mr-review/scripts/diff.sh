@@ -2,9 +2,11 @@
 # Filtered diff of HEAD against a base, so every agent reviews the same files.
 #
 # Usage (inside the MR worktree):
-#   diff.sh [--risky <glob>]... <base-ref> [ignore-glob...]
-#   ignore globs come from REVIEW.md → Ignore, --risky globs from REVIEW.md →
-#   Risky paths; in both `*` also matches `/`.
+#   diff.sh [--risky <glob>]... [--journey <name>=<glob>]... [--domain <name>=<glob>]...
+#           <base-ref> [ignore-glob...]
+#   ignore globs come from REVIEW.md → Ignore, --risky globs from Risky paths,
+#   --journey / --domain pairs from Journeys / Domains; in all of them `*`
+#   also matches `/`. Names are trimmed and may hold spaces and any letters.
 #
 # Writes the diff of the kept files to the worktree's git admin dir (never into
 # the working tree) and prints:
@@ -14,6 +16,10 @@
 #   skipped: <file> (<reason>)      one line per skipped file
 #   risky: <file> (<reason>)        one line per changed file on a risky path,
 #                                   skipped files included
+#   journey: <name> (<n> files)     one line per touched journey, n = changed
+#                                   files matching any of its globs (skipped
+#                                   files included), in argument order
+#   domain: <name> (<n> files)      the same for domains
 #   manifest: <path> (lockfile: <path>|none)
 #                                   one line per manifest owning a kept file
 #
@@ -40,7 +46,23 @@ set -eu
 
 max_lines=1000
 
-usage() { echo "usage: diff.sh [--risky <glob>]... <base-ref> [ignore-glob...]" >&2; exit 2; }
+usage() {
+  echo "usage: diff.sh [--risky <glob>]... [--journey <name>=<glob>]... [--domain <name>=<glob>]... <base-ref> [ignore-glob...]" >&2
+  exit 2
+}
+
+trim() { printf '%s' "$1" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'; }
+
+# Journey and context specs, one "<kind><TAB><name><TAB><glob>" per line.
+tab=$(printf '\t')
+area_specs=""
+add_area() {
+  case "$2" in *=*) ;; *) echo "diff.sh: $1 needs <name>=<glob>" >&2; usage ;; esac
+  name=$(trim "${2%%=*}") glob=$(trim "${2#*=}")
+  [ -n "$name" ] && [ -n "$glob" ] || { echo "diff.sh: $1 needs a non-empty <name>=<glob>" >&2; usage; }
+  area_specs="$area_specs${1#--}$tab$name$tab$glob
+"
+}
 
 # Risky globs, one per line (a glob never holds a newline).
 risky_globs=""
@@ -51,6 +73,10 @@ while [ $# -gt 0 ]; do
       risky_globs="$risky_globs$2
 "
       shift 2 ;;
+    --journey|--domain)
+      [ $# -ge 2 ] || { echo "diff.sh: $1 needs <name>=<glob>" >&2; usage; }
+      add_area "$1" "$2"
+      shift 2 ;;
     *) break ;;
   esac
 done
@@ -58,7 +84,9 @@ done
 base=$1
 shift
 for arg in "$@"; do
-  [ "$arg" != --risky ] || { echo "diff.sh: --risky must come before <base-ref>" >&2; usage; }
+  case "$arg" in
+    --risky|--journey|--domain) echo "diff.sh: $arg must come before <base-ref>" >&2; usage ;;
+  esac
 done
 git rev-parse -q --verify "$base^{commit}" >/dev/null || { echo "diff.sh: unknown base '$base'" >&2; exit 1; }
 
@@ -154,8 +182,10 @@ parent_dir() { case "$1" in */*) echo "${1%/*}" ;; *) echo . ;; esac; }
 out="$(git rev-parse --absolute-git-dir)/mr-review.diff"
 list="$out.files"
 risky="$out.risky"
+areas="$out.areas"
 : > "$list"
 : > "$risky"
+: > "$areas"
 files=0 total=0
 
 git -c core.quotePath=false diff --no-renames --numstat "$base" HEAD > "$out.numstat"
@@ -166,6 +196,12 @@ while IFS="$(printf '\t')" read -r added deleted file; do
   changed=$((added + deleted))
   risk=$(risk_reason "$file")
   [ -z "$risk" ] || echo "risky: $file ($risk)" >> "$risky"
+  if [ -n "$area_specs" ]; then
+    printf '%s' "$area_specs" | while IFS="$tab" read -r kind name glob; do
+      # shellcheck disable=SC2254 — the glob is meant to be expanded as a pattern
+      case "$file" in $glob) printf '%s\t%s\t%s\n' "$kind" "$name" "$file" ;; esac
+    done >> "$areas"
+  fi
   reason=$(skip_reason "$file" "$changed" "$@")
   if [ -n "$reason" ]; then
     echo "skipped: $file ($reason)"
@@ -176,6 +212,19 @@ while IFS="$(printf '\t')" read -r added deleted file; do
   fi
 done < "$out.numstat"
 cat "$risky"
+
+# Journeys, then contexts, each in argument order, with distinct matched files.
+{ printf '%s' "$area_specs" | sed 's/^/S\t/'; sed 's/^/M\t/' "$areas"; } | awk -F '\t' '
+  $1 == "S" { key = $2 FS $3; if (!(key in known)) { known[key] = 1; order[++n] = key }; next }
+  $1 == "M" { key = $2 FS $3; if (!((key FS $4) in seen)) { seen[key FS $4] = 1; count[key]++ } }
+  END {
+    for (pass = 1; pass <= 2; pass++)
+      for (i = 1; i <= n; i++) {
+        split(order[i], part, FS)
+        if (part[1] != (pass == 1 ? "journey" : "domain") || !(order[i] in count)) continue
+        print part[1] ": " part[2] " (" count[order[i]] " files)"
+      }
+  }'
 
 # One manifest line per manifest owning a kept file, in first-seen order.
 {
@@ -191,7 +240,7 @@ if [ $# -gt 0 ]; then
 else
   : > "$out"
 fi
-rm -f "$list" "$out.numstat" "$risky"
+rm -f "$list" "$out.numstat" "$risky" "$areas"
 
 echo "diff: $out"
 echo "files: $files"

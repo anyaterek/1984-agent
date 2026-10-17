@@ -41,7 +41,9 @@ requirement quoted next to the code — and nothing it did not ask for.
 
 Small diffs on risky paths (CI, Dockerfile and compose, deploy scripts,
 migrations, `auth/`, review rules, `REVIEW.md` → `Risky paths`) get at least
-`hard`.
+`hard`. An MR that touches two or more key user journeys or domains (bounded contexts),
+listed by the team in `REVIEW.md` → `Journeys` / `Domains`, gets `ultra`
+proposed, even when it is small and touches no risky path.
 
 ### Guarantees
 
@@ -71,7 +73,8 @@ migrations, `auth/`, review rules, `REVIEW.md` → `Risky paths`) get at least
 
 Put a `REVIEW.md` in the repository root to give every review the same context:
 stack, conventions, extra blocker rules, docs to check findings against
-(`Context`), paths that always need a deeper review (`Risky paths`), team and
+(`Context`), paths that always need a deeper review (`Risky paths`), key user
+journeys and domains that raise the depth (`Journeys`, `Domains`), team and
 library docs (`Docs`), build/test commands, ignored paths and the language of
 MR comments. Start from
 [the template](skills/mr-review/references/review-md-template.md).

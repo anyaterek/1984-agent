@@ -23,6 +23,9 @@
 # context through REVIEW.md → Context: docs/**), and from there:
 #   off-spec       cartTotal() for T-7: clean code and green tests, but no R-1
 #                  flooring and an empty cart returns 0 instead of throwing
+# Then REVIEW.md on main gets Journeys over src/checkout/ and src/orders/ (no
+# earlier branch touches them), and from there:
+#   two-journeys   one small file in each of the two journeys
 set -eu
 
 [ $# -eq 1 ] || { echo "usage: make-fixture.sh <dir>" >&2; exit 2; }
@@ -274,10 +277,33 @@ JS
 commit "feat: cart total (T-7)"
 
 g checkout -q main
+cat >> REVIEW.md <<'MD'
+
+## Journeys
+- checkout: `src/checkout/*`
+- ordering: `src/orders/*`
+MD
+commit "docs: key journeys"
+
+g checkout -q -b two-journeys main
+mkdir -p src/checkout src/orders
+cat > src/checkout/summary.js <<'JS'
+// Line shown above the pay button.
+export function checkoutSummary(total) {
+  return `To pay: ${total} ₽`;
+}
+JS
+cat > src/orders/limits.js <<'JS'
+// Largest order quantity (docs/pricing.md R-2).
+export const MAX_QUANTITY = 99;
+JS
+commit "feat: checkout summary and order limit"
+
+g checkout -q main
 cd "$root"
 git clone -q --bare seed origin.git
 git clone -q origin.git repo
 rm -rf seed
 cd repo
-for b in cosmetic logic-bug huge env-dependent ci-risky explained edge-gaps api-usage off-spec; do git branch -q "$b" "origin/$b"; done
+for b in cosmetic logic-bug huge env-dependent ci-risky explained edge-gaps api-usage off-spec two-journeys; do git branch -q "$b" "origin/$b"; done
 pwd

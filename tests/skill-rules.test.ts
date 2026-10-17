@@ -101,6 +101,18 @@ describe('mr-review severity calibration', () => {
   });
 });
 
+describe('mr-review key journeys and domains', () => {
+  it('passes Journeys and Domains to diff.sh and raises the mode by them', () => {
+    expect(read('SKILL.md')).toMatch(/--journey '<name>=<glob>'\]…/);
+    const modes = read('references/modes.md');
+    expect(modes).toMatch(/Two or more `journey:`\s+lines, or two or more `domain:` lines → propose `ultra`/);
+    expect(modes).toMatch(/deepest mode any signal asks for/);
+    expect(modes).toMatch(/`journey:`, `domain:` and `manifest:` lines/);
+    expect(read('references/report-format.md')).toMatch(/key journeys \(<names>\) — `ultra` is recommended/);
+    expect(read('references/review-md-template.md')).toMatch(/## Journeys[\s\S]*## Domains/);
+  });
+});
+
 describe('mr-review intent role', () => {
   it('checks the MR against its task and spec, paired with correctness', () => {
     expect(read('references/roles/intent.md')).toMatch(/does what it was asked to do/);
@@ -117,7 +129,7 @@ describe('mr-review risk and stack', () => {
   it('raises the mode for risky paths, in the rules and in the report layout', () => {
     expect(read('references/modes.md')).toMatch(/`risky:`[\s\S]*at least `hard`/);
     expect(read('references/report-format.md')).toMatch(/touches risky paths/);
-    expect(read('SKILL.md')).toMatch(/--risky '<glob>'\]… "\$\(git merge-base/);
+    expect(read('SKILL.md')).toMatch(/--risky '<glob>'\]…[^\n]*"\$\(git merge-base/);
   });
 
   it('checks library API findings against the docs of the version in use', () => {

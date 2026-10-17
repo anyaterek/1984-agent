@@ -1,6 +1,6 @@
 #!/bin/sh
 # Prepares one eval scenario on top of make-fixture.sh.
-# Usage: sh evals/setup-scenario.sh <E1..E13> <dir>   — prints the repo path.
+# Usage: sh evals/setup-scenario.sh <E1..E14> <dir>   — prints the repo path.
 set -eu
 [ $# -eq 2 ] || { echo "usage: setup-scenario.sh <scenario> <dir>" >&2; exit 2; }
 here=$(cd "$(dirname "$0")" && pwd)
@@ -35,6 +35,7 @@ GH
   E11) g checkout -q edge-gaps ;;
   E12) g checkout -q api-usage ;;
   E13) g checkout -q off-spec ;;
+  E14) g checkout -q two-journeys ;;
   *) echo "unknown scenario $1" >&2; exit 2 ;;
 esac
 pwd

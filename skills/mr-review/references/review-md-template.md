@@ -34,6 +34,18 @@ same review without explaining the context each time.
      compose, deploy scripts, migrations, `auth/`, REVIEW.md, AGENTS.md, CLAUDE.md. -->
 - `src/payments/**`
 
+## Journeys
+<!-- Critical user journeys: what users come to do, and where it lives in code.
+     Keep globs narrow. One journey touched → at least `hard`; two or more → `ultra`. -->
+- checkout: `src/checkout/**`, `src/payments/**`
+- sign-in: `src/auth/**`, `src/session/**`
+
+## Domains
+<!-- Domains: bounded contexts of the domain model (DDD) — not the same as
+     `Context` above. An MR across two or more → `ultra`. -->
+- catalog: `src/catalog/**`
+- orders: `src/orders/**`
+
 ## Docs
 <!-- Team guides and docs of key libraries; reviewers check API findings here first. -->
 - Fastify: https://fastify.dev/docs/latest/

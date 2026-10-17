@@ -42,13 +42,15 @@ repository root.
    (`sh <skill>/scripts/worktree.sh create pr:<n> | mr:<n> | ref:<branch>`).
 
 6. **Filtered diff.** Inside the worktree, after `git fetch <remote> <target>`, run
-   `sh <skill>/scripts/diff.sh [--risky '<glob>']… "$(git merge-base <remote>/<target> HEAD)" ['<REVIEW.md Ignore glob>']…`
+   `sh <skill>/scripts/diff.sh [--risky '<glob>']… [--journey '<name>=<glob>']… [--domain '<name>=<glob>']… "$(git merge-base <remote>/<target> HEAD)" ['<REVIEW.md Ignore glob>']…`
    ([diff.sh](scripts/diff.sh)), one `--risky` per `Risky paths` glob from
-   `REVIEW.md`, always before the base ref. Only `Ignore` globs go after the
+   `REVIEW.md`, one `--journey` per glob of each `Journeys` entry and one
+   `--domain` per glob of each `Domains` entry, always before the base ref. Only `Ignore` globs go after the
    base ref; `Context` globs are never passed to `diff.sh`. Quote every glob so
    the shell does not expand it. It writes the diff to a file and
    prints its path, the file and changed-line counts, every skipped file with
-   the reason, every file on a risky path (`risky:`) and the manifest and
+   the reason, every file on a risky path (`risky:`), every touched key
+   journey and domain (`journey:`, `domain:`) and the manifest and
    lockfile owning the kept files (`manifest:`). Reviewers get the **path**,
    not the pasted diff.
 
@@ -64,7 +66,7 @@ repository root.
 
 7. **Mode.** No mode given → propose one per [modes.md](references/modes.md)
    and wait for the user's answer. Any `risky:` line raises the proposal to at
-   least `hard`.
+   least `hard`; `journey:` and `domain:` lines can raise it to `ultra`.
 
 8. **Fork code.** If the MR comes from a fork, ask now,
    before any reviewer starts: show the exact install/build/test commands

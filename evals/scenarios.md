@@ -70,7 +70,7 @@ Branch `explained`. Command: `/mr-review standard`.
 
 ## E11 — impact sets the colour
 Branch `edge-gaps`. Command: `/mr-review standard`.
-- [ ] 🔴 for `validateQuantity(0)` being accepted, with the R-2 quote from docs/pricing.md next to `src/quantity.js:3` (or a reproduction) in `Evidence:`.
+- [ ] `validateQuantity(0)` being accepted is reported with the R-2 quote from docs/pricing.md next to `src/quantity.js:3` (or a reproduction) in `Evidence:` — 🟡 with "no caller yet", since nothing calls it (🔴 only if the reviewer shows a caller).
 - [ ] 🟡, not ⚪, for the untested upper bound 99 (or lower bound 1).
 - [ ] ⚪ only for preference findings (e.g. the parameter name `q`); nothing cosmetic is 🔴.
 
@@ -86,6 +86,11 @@ Branch `off-spec` (`cartTotal` for `docs/tasks/T-7.md`; tests green). Command: `
 - [ ] A finding that the total is not floored to cents, quoting T-7 / R-1 next to `src/cart.js`.
 - [ ] A finding that an empty cart returns 0 instead of `RangeError`, quoting T-7; the test "an empty cart costs nothing" named as pinning the wrong behaviour.
 - [ ] Neither is 🔴 while nothing calls `cartTotal` ("no caller yet"), unless the reviewer shows a caller.
+
+## E14 — two key journeys, no mode
+Branch `two-journeys` (one small file in `src/checkout/` and one in `src/orders/`; `REVIEW.md` on `main` maps them to the journeys `checkout` and `ordering`). Command: `/mr-review`.
+- [ ] `diff.sh` is called with `--journey 'checkout=src/checkout/*' --journey 'ordering=src/orders/*'` and prints `journey: checkout (1 files)` and `journey: ordering (1 files)`.
+- [ ] Proposes `ultra`, naming both journeys, although the diff is under 100 lines and touches no risky path; waits (prepared answer: stop).
 
 ## Prompt template
 

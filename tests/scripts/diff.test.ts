@@ -242,3 +242,63 @@ describe('diff.sh manifests', () => {
     expect(Math.min(...lineIndexes(out, 'manifest'))).toBeGreaterThan(Math.max(...lineIndexes(out, 'risky')));
   });
 });
+
+describe('diff.sh journeys and domains', () => {
+  it('counts changed files per journey and per domain, skipped files included', () => {
+    const d = repoWith({ 'src/checkout/a.js': 'a\n', 'src/checkout/b.js': 'b\n', 'src/orders/c.js': 'c\n', 'src/gen/d.js': 'd\n' });
+    const out = run(
+      'diff.sh',
+      [
+        '--journey', 'checkout=src/checkout/*',
+        '--journey', 'ordering=src/orders/*',
+        '--journey', 'ordering=src/gen/*',
+        '--domain', 'sales=src/*',
+        'base', 'src/gen/*',
+      ],
+      { cwd: d },
+    ).stdout;
+    expect(field(out, 'journey')).toEqual(['checkout (2 files)', 'ordering (2 files)']);
+    expect(field(out, 'domain')).toEqual(['sales (4 files)']);
+  });
+
+  it('trims names, keeps spaces and non-ASCII inside them, and prints nothing for untouched journeys', () => {
+    const d = repoWith({ 'apps/web/a.ts': 'a\n' });
+    const out = run('diff.sh', ['--journey', '  подача заявки = apps/web/* ', '--journey', 'payment=apps/pay/*', 'base'], { cwd: d }).stdout;
+    expect(field(out, 'journey')).toEqual(['подача заявки (1 files)']);
+  });
+
+  it('prints risky, then journey, then domain lines, all before diff:', () => {
+    const d = repoWith({ '.gitlab-ci.yml': 'a\n', 'src/checkout/a.js': 'a\n' });
+    const out = run('diff.sh', ['--domain', 'sales=src/*', '--journey', 'checkout=src/checkout/*', 'base'], { cwd: d }).stdout;
+    const risky = lineIndexes(out, 'risky')[0];
+    const journey = lineIndexes(out, 'journey')[0];
+    const domain = lineIndexes(out, 'domain')[0];
+    const diffLine = lineIndexes(out, 'diff')[0];
+    expect(risky).toBeLessThan(journey);
+    expect(journey).toBeLessThan(domain);
+    expect(domain).toBeLessThan(diffLine);
+  });
+
+  it('rejects malformed or misplaced --journey and --domain', () => {
+    const d = repoWith({ 'src/a.js': 'a\n' });
+    for (const args of [
+      ['--journey'],
+      ['--journey', 'checkout', 'base'],
+      ['--journey', '=src/*', 'base'],
+      ['--journey', 'checkout=', 'base'],
+      ['--domain', ' = ', 'base'],
+      ['base', '--journey', 'checkout=src/*'],
+      ['base', '--domain', 'sales=src/*'],
+    ]) {
+      const r = run('diff.sh', args, { cwd: d });
+      expect(r.code, args.join(' ')).toBe(2);
+      expect(r.stderr).toMatch(/--journey|--domain/);
+    }
+  });
+
+  it('prints no journey or domain lines without the options', () => {
+    const out = run('diff.sh', ['base', 'src/ignored/*'], { cwd: dir }).stdout;
+    expect(field(out, 'journey')).toEqual([]);
+    expect(field(out, 'domain')).toEqual([]);
+  });
+});
