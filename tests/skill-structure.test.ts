@@ -3,7 +3,7 @@ import { dirname, join, relative, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const SKILL_DIR = resolve(import.meta.dirname, '../skills/mr-review');
-const ROLE_FILES = ['architecture.md', 'correctness.md', 'performance.md', 'security.md', 'tests.md'];
+const ROLE_FILES = ['architecture.md', 'correctness.md', 'intent.md', 'performance.md', 'security.md', 'tests.md'];
 
 function filesUnder(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {

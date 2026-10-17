@@ -11,6 +11,12 @@ then wait for the answer:
 | < 800 lines | `hard` |
 | otherwise | `ultra` |
 
+Risk raises the floor, size does not lower it: if `diff.sh` printed any
+`risky:` line, propose at least `hard` and name the reasons (e.g. "`hard` —
+risky paths: ci, migration"). If the user chose `standard` anyway, review in
+`standard` and make the report's first line:
+"This MR touches risky paths (<reasons>) — `hard` is recommended."
+
 `hard` and `ultra` need subagents. If your agent cannot start subagents, say so
 and offer `standard`; do not imitate the roles one after another.
 
@@ -22,7 +28,15 @@ Every reviewer subagent gets the same brief; only the role file differs:
 2. The finding contract from [report-format.md](report-format.md).
 3. MR title, description, source and target branch.
 4. The path of the filtered diff file from `diff.sh`, the list of skipped files,
-   and the worktree path — read whole files there when the diff is not enough.
+   the `risky:` and `manifest:` lines, and the worktree path — read whole files
+   there when the diff is not enough.
+4a. **Project context:** the paths collected in SKILL.md step 6. Read them with
+   `git show <remote>/<target>:<path>`, never from the worktree. Use them in
+   "Before you report" ([report-format.md](report-format.md)).
+4b. **Docs:** for a finding about a library, framework or runtime API, use a
+   documentation tool if your agent has one (for example Context7 or Mintlify
+   Index), otherwise the official docs via web search or fetch; with neither,
+   mark the finding not verified. Links from `REVIEW.md` → `Docs` come first.
 5. `REVIEW.md` content, if any, and the `--focus` value, if any.
 6. **Checks decision:** `run` or `not-run` (fork MR declined by the user) —
    only the `tests` role uses it.
@@ -37,18 +51,20 @@ worktree and returns the checks result as described in
 
 ## standard
 
-One agent, no subagents. Do the checks yourself, then review the diff once
-against all five role checklists
-([correctness](roles/correctness.md), [architecture](roles/architecture.md),
-[security](roles/security.md), [performance](roles/performance.md),
-[tests](roles/tests.md)). If the MR changes logic, the report's first line is:
-"This MR changes logic — `hard` is recommended."
+One agent, no subagents. Do the checks yourself, read the project context
+yourself (as in brief items 4a and 4b), then review the diff once
+against all six role checklists
+([correctness](roles/correctness.md), [intent](roles/intent.md),
+[architecture](roles/architecture.md), [security](roles/security.md),
+[performance](roles/performance.md), [tests](roles/tests.md)). If the MR changes logic, the report's first line is:
+"This MR changes logic — `hard` is recommended." If it also touches risky paths,
+the risky-paths line from "Choosing a mode" comes first, then this one.
 
 ## hard
 
 Three reviewer subagents in parallel:
 
-1. correctness
+1. correctness + intent (both role files)
 2. architecture
 3. tests + security (both role files; runs the checks)
 
@@ -56,11 +72,12 @@ Then merge (below) and write one report.
 
 ## ultra
 
-Five reviewer subagents in parallel: correctness, architecture, security,
-performance, tests (runs the checks). Then:
+Five reviewer subagents in parallel: correctness + intent (both role files),
+architecture, security, performance, tests (runs the checks). Then:
 
 1. **Merge** (below) and number the findings `F1…Fn`.
-2. **Debate — one round.** Send the merged list to all five reviewers (if your
+2. **Debate — one round.** Send the merged list, each finding with its
+   `evidence`, to all five reviewers (if your
    agent cannot message a finished subagent, start a fresh one per role with
    the same brief plus the list). Each returns the vote contract from
    [report-format.md](report-format.md) for **every** finding, its own included.
@@ -76,9 +93,11 @@ performance, tests (runs the checks). Then:
 
 ## Merging findings (hard, ultra)
 
-Two findings are duplicates when they point at the same file and overlapping
+First drop every finding with an empty `evidence` — it does not count as a
+finding. Two findings are duplicates when they point at the same file and overlapping
 lines and describe the same problem. Keep one: the higher severity, the
-clearest `why`, the union of distinct `fixes` (max 3), and list both roles.
+clearest `why`, the union of distinct `fixes` (max 3), every distinct
+`evidence` joined with `; `, and list both roles.
 Then sort: blockers, should-fix, nits; within a level by file and line.
 
 ## Large diffs

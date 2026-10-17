@@ -13,4 +13,8 @@ Check:
 
 Not yours: whether the logic is correct (correctness), tests, security, speed.
 
+Findings about how a library or framework should be used follow the docs rule
+in [report-format.md](../report-format.md): docs of the version in use, link
+and version in `evidence`.
+
 Return findings using the contract in [report-format.md](../report-format.md).

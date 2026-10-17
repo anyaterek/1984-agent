@@ -24,6 +24,21 @@ same review without explaining the context each time.
 - Any Prisma migration without a matching rollback note in the MR
 - Changes to `src/payments/**` without an e2e test
 
+## Context
+<!-- Docs every reviewer checks a finding against. Read from the target branch. -->
+- `docs/specs/**`
+- `docs/DECISIONS.md`
+
+## Risky paths
+<!-- Paths that always get at least `hard`. Built in already: CI, Dockerfile and
+     compose, deploy scripts, migrations, `auth/`, REVIEW.md, AGENTS.md, CLAUDE.md. -->
+- `src/payments/**`
+
+## Docs
+<!-- Team guides and docs of key libraries; reviewers check API findings here first. -->
+- Fastify: https://fastify.dev/docs/latest/
+- Our API guide: `docs/api-guide.md`
+
 ## Hot paths
 <!-- Code where performance findings matter most. -->
 - `src/search/**`
